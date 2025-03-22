@@ -1,0 +1,49 @@
+#Déploiement de PostgresDB dans un containeur docker
+
+docker run --name my-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=root -e POSTGRES_DB=movies_db -p 5432:5432 -d postgres:latest
+
+
+
+This starts a PostgreSQL container with:
+
+    Username: postgres
+    Password: root
+    Database name: movies_db
+    Exposing port 5432
+
+# Connexion à la base
+docker exec -it my-postgres psql -U postgres -d movies_db
+
+
+#Creation de la Table
+
+CREATE TABLE movies (
+    MovieName TEXT,
+    MovieID INT,
+    Genre TEXT,
+    UserID INT,
+    Rating INT,
+    Timestamp BIGINT,
+    Gender CHAR(1),
+    Age INT,
+    Occupation INT,
+    Zipcode TEXT,
+    age_group TEXT
+);
+
+
+# copie du fichier CSV après nettoyage dans le contianeur PostgresDB
+
+docker cp movies_cleaned.csv my-postgres:/movies_cleaned.csv
+
+
+#chargement du CSV dans PostgresDB
+
+docker exec -it my-postgres psql -U postgres -d movies_db -c "
+COPY movies(MovieName,MovieID,Genre,UserID,Rating,Timestamp,Gender,Age,Occupation,Zipcode,age_group)
+FROM '/movies_cleaned.csv' DELIMITER ',' CSV HEADER;
+"
+
+
+#Verification
+docker exec -it my-postgres psql -U postgres -d movies_db -c "SELECT * FROM movies LIMIT 5;"
