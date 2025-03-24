@@ -11,7 +11,7 @@ from sklearn import metrics
 from joblib import dump
 
 # Load data
-file_path = '../data/movies_db.csv'  # Modify the file path if needed
+file_path = 'src/data/movies_db.csv'  # Modify the file path if needed
 try:
     movie_ratings = pd.read_csv(file_path, sep=',')
 except Exception as e:

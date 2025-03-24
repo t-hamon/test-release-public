@@ -1,6 +1,17 @@
 Project Name
 ==============================
 
+Movie Recommandation API
+==============================
+
+This project is a starter pack for MLOps projects based on a movie recommendation system.  
+It uses a Machine Learning pipeline integrated with **FastAPI**, **Docker** and **PostgreSQL**.
+
+The purpose is to build, train and serve a basic movie recommender API.  
+The setup is designed to be **reproducible**, **extensible**, and aligned with **MLOps best practices**.
+
+---
+
 This project is a starting Pack for MLOps projects based on the subject "movie_recommandation". It's not perfect so feel free to make some modifications on it.
 
 Project Organization

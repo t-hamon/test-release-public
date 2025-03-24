@@ -1,8 +1,8 @@
 import csv
 import re
 
-input_file = "../data/movies_db.csv"
-output_file = "../data/movies_cleaned.csv"
+input_file = "src/data/movies_db.csv"
+output_file = "src/data/movies_cleaned.csv"
 
 with open(input_file, mode="r", encoding="utf-8") as infile, open(output_file, mode="w", encoding="utf-8", newline="") as outfile:
     reader = csv.reader(infile)

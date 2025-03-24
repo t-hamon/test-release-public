@@ -5,10 +5,10 @@ from sklearn.model_selection import train_test_split
 from joblib import load  # To load the saved model
 
 # Load data for movie names and genres
-df_movies = pd.read_csv('../data/movies.utf.csv', sep='::', engine='python', names=['MovieID', 'MovieName', 'Genre'])
+df_movies = pd.read_csv('src/data/movies.utf.csv', sep='::', engine='python', names=['MovieID', 'MovieName', 'Genre'])
 
 # Load ratings data
-file_path = '../data/movies_db.csv'  # Modify the file path if needed
+file_path = 'src/data/movies_db.csv'  # Modify the file path if needed
 try:
     movie_ratings = pd.read_csv(file_path, sep=',')
 except Exception as e:
