@@ -1,4 +1,4 @@
-name: Test FastAPI with Docker and PostgreSQL
+name: Test Film Reco API avec Docker et PostgreSQL
 
 on:
   push:
@@ -11,7 +11,6 @@ on:
 jobs:
   test-api:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:latest
@@ -27,30 +26,51 @@ jobs:
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 5s
 
     steps:
+      # Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: "Debug: Check if SQL and CSV exist"
+      # Debug: Check if SQL and CSV exist in the data directory
+      - name: Debug: Check if SQL and CSV exist
         run: |
           echo "Listing ./data contents:"
           ls -l ./data
           echo "Printing init.sql:"
           cat ./data/init.sql
 
+      # Create .env file for the FastAPI app (you can manage this securely)
+      - name: Create .env file for FastAPI
+        run: |
+          echo "POSTGRES_USER=postgres" >> .env
+          echo "POSTGRES_PASSWORD=root" >> .env
+          echo "POSTGRES_DB=movies_db" >> .env
+
+      # Build Docker image for FastAPI
       - name: Build Docker image
         run: docker build -t my-fastapi-app .
 
+      # Run FastAPI container in detached mode
       - name: Run API container (detached)
         run: |
-          docker run -d --name fastapi-container --network host my-fastapi-app
+          docker run -d --name fastapi-container --network host --env-file .env my-fastapi-app
           sleep 5  # wait for app to start
 
-      - name: Test API
-        run: curl http://localhost:8000/docs
+      # Test /health endpoint
+      - name: Test /health endpoint
+        run: |
+          curl -f http://localhost:8000/health
 
+      # Test /recommend endpoint (or any other known working endpoint)
+      - name: Test /recommend endpoint (if available)
+        run: |
+          curl -X POST http://localhost:8000/recommend \
+            -H "Content-Type: application/json" \
+            -d '{"user_id": 1}'
+
+      # Show Postgres logs (if anything failed)
       - name: Show Postgres logs (if anything failed)
         if: failure()
         run: docker logs $(docker ps -aqf "ancestor=postgres")
