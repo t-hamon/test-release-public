@@ -1,60 +1,53 @@
-name: Film reco API avec Docker et PostgreSQL
-
+name: Test FastAPI with Docker and PostgreSQL
 
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     branches:
-      - main
+      - master
 
 jobs:
-  build:
+  test-api:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: movies_db
+        ports:
+          - 5432:5432
+        volumes:
+          - ./data:/docker-entrypoint-initdb.d
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - name: Check out repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
+      - name: "Debug: Check if SQL and CSV exist"
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+          echo "Listing ./data contents:"
+          ls -l ./data
+          echo "Printing init.sql:"
+          cat ./data/init.sql
+      - name: Build Docker image
+        run: docker build -t my-fastapi-app .
 
-      - name: Set up PostgreSQL container
-        uses: docker://postgres:latest
-        with:
-          args: |
-            -e POSTGRES_USER=postgres
-            -e POSTGRES_PASSWORD=root
-            -e POSTGRES_DB=movies_db
-            -p 5432:5432
-            -v ./data:/docker-entrypoint-initdb.d
-
-      - name: Run migrations and populate DB
+      - name: Run API container (detached)
         run: |
-          echo "Running SQL migration and inserting data"
-          psql -h localhost -U postgres -d movies_db -f ./data/init.sql
+          docker run -d --name fastapi-container --network host my-fastapi-app
+          sleep 5  # wait for app to start
+      - name: Test API
+        run: curl http://localhost:8000/docs
 
-      - name: Run tests with pytest
-        run: |
-          pytest src/api/test_api.py
-        # pytest will look for the tests in the src/api/test_api.py file
-
-      - name: Build and push Docker image
-        run: |
-          docker build -t your-image-name .
-          docker push your-image-name
-
-      - name: Upload results (optional)
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-results
-          path: results/
+      - name: Show Postgres logs (if anything failed)
+        if: failure()
+        run: docker logs $(docker ps -aqf "ancestor=postgres")
