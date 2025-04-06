@@ -1,4 +1,4 @@
-name: Test FastAPI with Docker and PostgreSQL
+name: Test FastAPI avec Docker et PostgreSQL
 
 on:
   push:
@@ -36,15 +36,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest httpx
+          pip install httpx pytest
 
-      - name: "Debug: Check if SQL and CSV exist"
+      - name: "Debug: Check data contents"
         run: |
           echo "Listing ./data contents:"
           ls -l ./data
@@ -54,17 +54,16 @@ jobs:
       - name: Build Docker image
         run: docker build -t my-fastapi-app .
 
-      - name: Run API container (detached)
+      - name: Run API container
         run: |
-          docker run -d --name fastapi-container --network host my-fastapi-app
-          sleep 5  # wait for the app to start
+          docker run -d \
+            --name fastapi-container \
+            --network host \
+            -e DATABASE_URL="postgresql://postgres:root@localhost:5432/movies_db" \
+            my-fastapi-app
+          sleep 5
 
-      - name: Test FastAPI with Pytest
-        run: pytest src/api/test_api.py
-
-      - name: Test API health check
+      - name: Health check
         run: curl http://localhost:8000/health
 
-      - name: Show Postgres logs (if anything failed)
-        if: failure()
-        run: docker logs $(docker ps -aqf "ancestor=postgres")
+      - name: Run pytest
