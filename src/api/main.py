@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from .db import get_db_connection
 import subprocess
 
 # Nettoyage CSV
@@ -38,7 +39,15 @@ def predict():
         "stderr": result.stderr
     }
 
-
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM movies")
+        count = cur.fetchone()
+        cur.close()
+        conn.close()
+        return {"status": "ok", "movie_count": count["count"]}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
