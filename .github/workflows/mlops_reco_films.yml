@@ -28,25 +28,42 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: "Debug: Check if SQL and CSV exist"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Debug: Check if SQL and CSV exist
         run: |
           echo "Listing ./data contents:"
           ls -l ./data
           echo "Printing init.sql:"
           cat ./data/init.sql
+
       - name: Build Docker image
         run: docker build -t my-fastapi-app .
 
       - name: Run API container (detached)
         run: |
           docker run -d --name fastapi-container --network host my-fastapi-app
-          sleep 5  # wait for app to start
-      - name: Test API
-        run: curl http://localhost:8000/docs
+          sleep 5  # wait for the app to start
+
+      - name: Test FastAPI with Pytest
+        run: pytest src/api/test_api.py
+
+      - name: Test API health check
+        run: curl http://localhost:8000/health
 
       - name: Show Postgres logs (if anything failed)
         if: failure()
