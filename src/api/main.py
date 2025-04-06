@@ -37,3 +37,8 @@ def predict():
         "stdout": result.stdout,
         "stderr": result.stderr
     }
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
