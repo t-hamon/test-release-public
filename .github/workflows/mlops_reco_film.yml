@@ -1,0 +1,60 @@
+name: Build FastAPI and Test with PostgreSQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: movies_db
+        volumes:
+          - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql
+          - ./data/movies_cleaned.csv:/docker-entrypoint-initdb.d/movies_cleaned.csv
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:root@localhost:5432/movies_db
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Build Docker image
+      run: docker build -t fastapi-app .
+
+    - name: Run FastAPI app
+      run: |
+        docker run -d --rm \
+          --name fastapi-container \
+          -e DATABASE_URL=$DATABASE_URL \
+          -p 8000:8000 \
+          fastapi-app
+        sleep 5
+
+    - name: Test API health endpoint
+      run: |
+        curl -f http://localhost:8000/health || {
+          echo "❌ FastAPI app failed to respond"
+          docker logs fastapi-container
+          exit 1
+        }
+
+    - name: Stop FastAPI container
+      if: always()
+      run: docker stop fastapi-container
