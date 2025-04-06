@@ -1,4 +1,4 @@
-name: Build FastAPI and Test with PostgreSQL
+name: Build, Run FastAPI with PostgreSQL, and Test
 
 on:
   push:
@@ -29,13 +29,14 @@ jobs:
           --health-retries 5
 
     env:
+      # Define DATABASE_URL here for FastAPI to connect to PostgreSQL
       DATABASE_URL: postgresql://postgres:root@localhost:5432/movies_db
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Build Docker image
+    - name: Build FastAPI Docker image
       run: docker build -t fastapi-app .
 
     - name: Run FastAPI app
