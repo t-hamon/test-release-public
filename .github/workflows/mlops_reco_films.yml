@@ -1,4 +1,4 @@
-name: Film reco avec Docker et PostgreSQL
+name: Film reco API avec Docker et PostgreSQL
 
 
 on:
