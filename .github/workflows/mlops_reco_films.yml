@@ -1,4 +1,4 @@
-name: Test Film Reco API avec Docker et PostgreSQL
+name: Test FastAPI with Docker and PostgreSQL
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5s
+          --health-retries 5   # Corrected this to an integer value, no "s" needed
 
     steps:
       # Checkout the code from the repository
@@ -34,14 +34,14 @@ jobs:
         uses: actions/checkout@v3
 
       # Debug: Check if SQL and CSV exist in the data directory
-      - name:  "Debug: Check if SQL and CSV exist"
+      - name: "Debug: Check if SQL and CSV exist"
         run: |
           echo "Listing ./data contents:"
           ls -l ./data
           echo "Printing init.sql:"
           cat ./data/init.sql
 
-      # Create .env file for the FastAPI app (you can manage this securely)
+      # Create .env file for the FastAPI app
       - name: Create .env file for FastAPI
         run: |
           echo "POSTGRES_USER=postgres" >> .env
@@ -63,7 +63,7 @@ jobs:
         run: |
           curl -f http://localhost:8000/health
 
-      # Test /recommend endpoint (or any other known working endpoint)
+      # Test /recommend endpoint (if available)
       - name: Test /recommend endpoint (if available)
         run: |
           curl -X POST http://localhost:8000/recommend \
@@ -73,4 +73,6 @@ jobs:
       # Show Postgres logs (if anything failed)
       - name: Show Postgres logs (if anything failed)
         if: failure()
-        run: docker logs $(docker ps -aqf "ancestor=postgres")
+        run: |
+          container_id=$(docker ps -aqf "ancestor=postgres")
+          docker logs $container_id
