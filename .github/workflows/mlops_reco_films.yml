@@ -44,7 +44,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest httpx
 
-      - name: Debug: Check if SQL and CSV exist
+      - name: "Debug: Check if SQL and CSV exist"
         run: |
           echo "Listing ./data contents:"
           ls -l ./data
