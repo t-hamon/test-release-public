@@ -26,7 +26,7 @@ jobs:
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5   # Corrected this to an integer value, no "s" needed
+          --health-retries 5  # Removed the comment
 
     steps:
       # Checkout the code from the repository
@@ -74,5 +74,9 @@ jobs:
       - name: Show Postgres logs (if anything failed)
         if: failure()
         run: |
-          container_id=$(docker ps -aqf "ancestor=postgres")
-          docker logs $container_id
+          container_id=$(docker ps -q -f "ancestor=postgres" | head -n 1) # Capturing container ID correctly
+          if [ -n "$container_id" ]; then
+            docker logs $container_id
+          else
+            echo "No Postgres container found"
+          fi
