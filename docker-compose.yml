@@ -19,11 +19,28 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - postgres
+      - mlflow
     ports:
       - "8000:8000"
     volumes:
       - ./src:/app/src
 
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.3
+    container_name: mlflow-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns  # mount volume to persist MLflow logs
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=/mlflow/mlruns
+      - MLFLOW_ARTIFACT_ROOT=/mlflow/mlruns
+    command: >
+      mlflow server
+        --backend-store-uri /mlflow/mlruns
+        --default-artifact-root /mlflow/mlruns
+        --host 0.0.0.0
+        --port 5000
+
 volumes:
   pgdata: {}
-
