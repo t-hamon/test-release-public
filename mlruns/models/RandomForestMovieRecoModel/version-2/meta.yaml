@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1746019738174
+current_stage: None
+description: ''
+last_updated_timestamp: 1746019738174
+name: RandomForestMovieRecoModel
+run_id: 81cde39c704d4ba09ffe47324b45356b
+run_link: ''
+source: /mlflow/mlruns/416422277481462010/81cde39c704d4ba09ffe47324b45356b/artifacts/random_forest_model
+status: READY
+status_message: null
+storage_location: /mlflow/mlruns/416422277481462010/81cde39c704d4ba09ffe47324b45356b/artifacts/random_forest_model
+user_id: null
+version: 2

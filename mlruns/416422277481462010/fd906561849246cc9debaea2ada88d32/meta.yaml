@@ -1,0 +1,15 @@
+artifact_uri: /mlflow/mlruns/416422277481462010/fd906561849246cc9debaea2ada88d32/artifacts
+end_time: 1746019627701
+entry_point_name: ''
+experiment_id: '416422277481462010'
+lifecycle_stage: active
+run_id: fd906561849246cc9debaea2ada88d32
+run_name: movie-rating-model-training
+run_uuid: fd906561849246cc9debaea2ada88d32
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1746019618410
+status: 3
+tags: []
+user_id: root
