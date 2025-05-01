@@ -1,46 +1,72 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:latest
+  # Airflow Webserver
+  airflow-webserver:
+    image: apache/airflow:2.9.0-python3.10
+    container_name: airflow-webserver
+    environment:
+      - AIRFLOW__CORE__FERNET_KEY=secretkey
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+    ports:
+      - "8080:8080"
+    depends_on:
+      - airflow-scheduler
+    mem_limit: 1g  # Set memory limit for Airflow webserver container
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    image: apache/airflow:2.9.0-python3.10
+    container_name: airflow-scheduler
+    environment:
+      - AIRFLOW__CORE__FERNET_KEY=secretkey
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+    depends_on:
+      - my-postgres
+    mem_limit: 1g  # Set memory limit for Airflow scheduler container
+
+  # MLflow container (changed to avoid port conflict)
+  mlflow-server:
+    image: ghcr.io/mlflow/mlflow:v2.11.3
+    container_name: mlflow-server
+    environment:
+      MLFLOW_TRACKING_URI: "http://localhost:5001"
+    ports:
+      - "5001:5000"  # Changed to 5001 for host to avoid conflict
+    mem_limit: 2g  # Set memory limit for MLflow container
+
+  # Application container
+  app:
+    build: .
+    container_name: reco-app
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+    ports:
+      - "8000:8000"
+    depends_on:
+      - my-postgres
+    mem_limit: 2g  # Set memory limit for the app container
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      retries: 3
+      timeout: 10s
+
+  # PostgreSQL container
+  my-postgres:
+    image: postgres:14 
     container_name: my-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: movies_db
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      - postgres
-      - mlflow
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./src:/app/src
-
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.11.3
-    container_name: mlflow-server
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./mlruns:/mlflow/mlruns  # mount volume to persist MLflow logs
-    environment:
-      - MLFLOW_BACKEND_STORE_URI=/mlflow/mlruns
-      - MLFLOW_ARTIFACT_ROOT=/mlflow/mlruns
-    command: >
-      mlflow server
-        --backend-store-uri /mlflow/mlruns
-        --default-artifact-root /mlflow/mlruns
-        --host 0.0.0.0
-        --port 5000
+    mem_limit: 4g  # Set memory limit for PostgreSQL container
 
 volumes:
-  pgdata: {}
+  pgdata:
+    driver: local
+
