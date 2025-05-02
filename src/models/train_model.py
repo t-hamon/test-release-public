@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from joblib import dump
 
 # Optional: set MLflow tracking URI and experiment
-mlflow.set_tracking_uri("http://mlflow:5000")
+mlflow.set_tracking_uri("http://localhost:5001")
 
 mlflow.set_experiment("MovieRecommendation")
 

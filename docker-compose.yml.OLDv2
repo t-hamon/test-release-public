@@ -15,36 +15,14 @@ services:
       - "5432:5432"
     mem_limit: 4g
 
-  # Airflow DB initializer
-  airflow-init:
-    image: apache/airflow:2.9.0-python3.10
-    container_name: airflow-init
-    depends_on:
-      - my-postgres
-    environment:
-      AIRFLOW__CORE__FERNET_KEY: 3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
-    entrypoint: /bin/bash
-    command:
-      - -c
-      - |
-        airflow db init && \
-        airflow users create \
-          --username admin \
-          --firstname Admin \
-          --lastname User \
-          --role Admin \
-          --email admin@example.com \
-          --password mypassword
-
   # Airflow Scheduler
   airflow-scheduler:
     image: apache/airflow:2.9.0-python3.10
     container_name: airflow-scheduler
     command: scheduler
     environment:
-      AIRFLOW__CORE__FERNET_KEY: 3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+      - AIRFLOW__CORE__FERNET_KEY=3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
     depends_on:
       - my-postgres
     mem_limit: 1g
@@ -55,10 +33,10 @@ services:
     container_name: airflow-webserver
     command: webserver
     environment:
-      AIRFLOW__CORE__FERNET_KEY: 3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
-      AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
-      AIRFLOW__WEBSERVER__AUTH_BACKEND: airflow.www.auth.backend.password_auth
+      - AIRFLOW__CORE__FERNET_KEY=3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+      - AIRFLOW__WEBSERVER__AUTHENTICATE=True
+      - AIRFLOW__WEBSERVER__AUTH_BACKEND=airflow.www.auth.backend.password_auth
     ports:
       - "8080:8080"
     depends_on:
