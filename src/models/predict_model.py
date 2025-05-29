@@ -23,7 +23,8 @@ labels = movie_ratings['Rating'].values
 train, test, train_labels, test_labels = train_test_split(features, labels, test_size=0.3)
 
 # Load the trained Random Forest model from the .joblib file
-rf = load('random_forest_model.joblib')  # Ensure the model is in the same directory or provide full path
+#rf = load('random_forest_model.joblib')  # Ensure the model is in the same directory or provide full path
+rf = load('/app/src/models/random_forest_model.joblib')
 
 # Using the loaded Random Forest model to predict the test data
 y_pred_rf = rf.predict(test)
@@ -94,3 +95,13 @@ top_movies_df = top_movies_df.merge(df_movies[['MovieID', 'MovieName']], on='Mov
 # Display the results
 print(top_movies_df[['MovieName', 'Predicted Rating']])
 
+# Add user ID column to match expected API format
+user_id = 1  # Example static user ID or pass it dynamically if needed
+top_movies_df['userId'] = user_id
+top_movies_df.rename(columns={'MovieID': 'movieId', 'Predicted Rating': 'pred_rating'}, inplace=True)
+
+# Reorder columns to match expected format
+top_movies_df = top_movies_df[['userId', 'movieId', 'pred_rating']]
+
+# Save to CSV
+top_movies_df.to_csv('src/api/predictions_rf.csv', index=False)

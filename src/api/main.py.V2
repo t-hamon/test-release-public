@@ -1,0 +1,50 @@
+from fastapi import FastAPI
+import subprocess
+import psycopg2
+
+app = FastAPI()
+
+# Helper function to connect to the database
+def get_db_connection():
+    return psycopg2.connect(
+        host="postgres",
+        database="movies_db",
+        user="postgres",
+        password="root"
+    )
+
+@app.get("/")
+def root():
+    return {"message": "API de recommandation de films!"}
+
+@app.post("/training")
+def train():
+    result = subprocess.run(["python3", "src/models/train_model.py"], capture_output=True, text=True)
+    return {
+        "status": "Training completed",
+        "stdout": result.stdout,
+        "stderr": result.stderr
+    }
+
+@app.post("/prediction")
+def predict():
+    result = subprocess.run(["python3", "src/models/predict_model.py"], capture_output=True, text=True)
+    return {
+        "status": "Prediction completed",
+        "stdout": result.stdout,
+        "stderr": result.stderr
+    }
+
+@app.get("/health")
+def health():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM movies")
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return {"status": "ok", "movie_count": count}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+

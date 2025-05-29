@@ -1,7 +1,6 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query
 import subprocess
 import psycopg2
-import pandas as pd
 from db import get_db_connection
 from typing import List
 
@@ -37,7 +36,6 @@ def predict():
         "stdout": result.stdout,
         "stderr": result.stderr
     }
-
 @app.get("/health")
 def health_check():
     try:
@@ -49,34 +47,13 @@ def health_check():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
+
+
 @app.get("/recommendations")
 def get_recommendations(user_id: int, n: int = 5):
-    try:
-        # Load the predictions CSV
-        df = pd.read_csv("src/api/predictions_rf.csv")
-
-        # Filter recommendations for the user
-        user_recs = df[df["userId"] == user_id]
-
-        if user_recs.empty:
-            raise HTTPException(status_code=404, detail="No recommendations found for this user")
-
-        # Sort by predicted rating descending
-        user_recs = user_recs.sort_values(by="pred_rating", ascending=False)
-
-        # Return top N recommendations
-        top_n = user_recs.head(n)
-
-        # Convert to list of movie IDs (or use movie titles if available)
-        recommendations = top_n["movieId"].tolist()
-
-        return {
-            "user_id": user_id,
-            "recommendations": recommendations
-        }
-
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="predictions_rf.csv not found. Please run /prediction first.")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+    # Example: simulate a list of movie IDs or names
+    recommendations = [f"movie_{i}" for i in range(1, n+1)]
+    return {
+        "user_id": user_id,
+        "recommendations": recommendations
+    }

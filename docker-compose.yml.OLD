@@ -1,46 +1,97 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:latest
+  # PostgreSQL
+  my-postgres:
+    image: postgres:14
     container_name: my-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: movies_db
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
     volumes:
       - pgdata:/var/lib/postgresql/data
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      - postgres
-      - mlflow
     ports:
-      - "8000:8000"
-    volumes:
-      - ./src:/app/src
+      - "5432:5432"
+   # mem_limit: 4g
 
-  mlflow:
+  # Airflow DB initializer
+  airflow-init:
+    image: apache/airflow:2.9.0-python3.10
+    container_name: airflow-init
+    depends_on:
+      - my-postgres
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: 3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init && \
+        airflow users create \
+          --username admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com \
+          --password mypassword
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    image: apache/airflow:2.9.0-python3.10
+    container_name: airflow-scheduler
+    command: scheduler
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: 3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+    depends_on:
+      - my-postgres
+   # mem_limit: 1g
+
+  # Airflow Webserver
+  airflow-webserver:
+    image: apache/airflow:2.9.0-python3.10
+    container_name: airflow-webserver
+    command: webserver
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: 3pfbKxdYFNgKcSJwVihnMse7VYUfQFIkjdjqq7Ckyf8==
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+      AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
+      AIRFLOW__WEBSERVER__AUTH_BACKEND: airflow.www.auth.backend.password_auth
+    ports:
+      - "8080:8080"
+    depends_on:
+      - airflow-scheduler
+   # mem_limit: 1g
+
+  # MLflow Tracking Server
+  mlflow-server:
     image: ghcr.io/mlflow/mlflow:v2.11.3
     container_name: mlflow-server
+    command: mlflow server --host 0.0.0.0 --port 5000
     ports:
-      - "5000:5000"
-    volumes:
-      - ./mlruns:/mlflow/mlruns  # mount volume to persist MLflow logs
+      - "5001:5000"
+  #  mem_limit: 2g
+
+  # FastAPI Application
+  app:
+    build: .
+    container_name: reco-app
     environment:
-      - MLFLOW_BACKEND_STORE_URI=/mlflow/mlruns
-      - MLFLOW_ARTIFACT_ROOT=/mlflow/mlruns
-    command: >
-      mlflow server
-        --backend-store-uri /mlflow/mlruns
-        --default-artifact-root /mlflow/mlruns
-        --host 0.0.0.0
-        --port 5000
+      DATABASE_URL: postgresql+psycopg2://postgres:password@my-postgres:5432/mydatabase
+    ports:
+      - "8000:8000"
+    depends_on:
+      - my-postgres
+   # mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      retries: 3
+      timeout: 10s
 
 volumes:
-  pgdata: {}
+  pgdata:
+    driver: local
+

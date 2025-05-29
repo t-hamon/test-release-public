@@ -21,8 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 
 # Set env path for training and FastAPI
-ENV PYTHONPATH="${PYTHONPATH}:/app/src"
-
+ENV PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}/app/src/api"
 # Expose API port
 EXPOSE 8000
 

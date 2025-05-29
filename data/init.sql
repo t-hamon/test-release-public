@@ -1,4 +1,4 @@
-CREATE TABLE movies (
+CREATE TABLE IF NOT EXISTS movies (
     MovieName TEXT,
     MovieID INT,
     Genre TEXT,
@@ -14,3 +14,4 @@ CREATE TABLE movies (
 
 COPY movies(MovieName,MovieID,Genre,UserID,Rating,Timestamp,Gender,Age,Occupation,Zipcode,age_group)
 FROM '/docker-entrypoint-initdb.d/movies_cleaned.csv' DELIMITER ',' CSV HEADER;
+
