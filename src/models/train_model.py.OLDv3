@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import mlflow
 import mlflow.sklearn
-import joblib  # <-- Add joblib import
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -14,8 +13,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
 # Set MLflow tracking URI and experiment name
-mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-mlflow.set_tracking_uri("http://172.17.0.1:5000")
+mlflow.set_tracking_uri("http://localhost:5001")  # Confirm your MLflow server is running here
 mlflow.set_experiment("MovieRecommendation")
 
 # Load CSV data file from first argument or fallback path
@@ -75,11 +73,6 @@ with mlflow.start_run(run_name="movie-rating-model-training"):
     acc_model2 = accuracy_score(test_labels, y_pred_rf)
     classification_report_rf = classification_report(test_labels, y_pred_rf)
 
-    # Save the model locally as joblib file (important for predict_model.py)
-    joblib_path = "src/models/random_forest_model.joblib"
-    joblib.dump(rf, joblib_path)
-    print(f"Random Forest model saved locally at: {joblib_path}")
-
     # K-Nearest Neighbors
     knn = KNeighborsClassifier()
     knn.fit(train_scaled, train_labels)
@@ -105,9 +98,9 @@ with mlflow.start_run(run_name="movie-rating-model-training"):
         f.write(classification_report_rf)
     mlflow.log_artifact("classification_report_rf.txt")
 
-    # Log Random Forest model (MLflow tracking)
+    # Log Random Forest model (remove registered_model_name if no registry configured)
     print("Logging Random Forest model to MLflow...")
-    mlflow.sklearn.log_model(rf, "random_forest_model")
+    mlflow.sklearn.log_model(rf, "random_forest_model")  # <- Remove registered_model_name if no registry
     print("Model logged successfully!")
 
     # Save and log predictions artifact

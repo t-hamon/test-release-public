@@ -1,12 +1,17 @@
-from fastapi import FastAPI, Query, HTTPException, UploadFile, File
+from fastapi import FastAPI, Query, HTTPException
 import subprocess
 import psycopg2
 import pandas as pd
+from db import get_db_connection
+from typing import List
+from fastapi import UploadFile, File, APIRouter
 import shutil
+import subprocess
 import os
 
 app = FastAPI()
 
+# Helper function to connect to the database
 def get_db_connection():
     return psycopg2.connect(
         host="my-postgres",
@@ -21,20 +26,16 @@ def root():
 
 @app.post("/training")
 async def train(file: UploadFile = File(...)):
+    # Save the uploaded file
     upload_path = f"uploaded_{file.filename}"
     with open(upload_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    result = subprocess.run(
-        ["python3", "src/models/train_model.py", upload_path],
-        capture_output=True,
-        text=True
-    )
+    # Run training script with the uploaded file as argument
+    result = subprocess.run(["python3", "src/models/train_model.py", upload_path], capture_output=True, text=True)
 
+    # Optionally remove the uploaded file
     os.remove(upload_path)
-
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"Training failed: {result.stderr}")
 
     return {
         "status": "Training completed",
@@ -44,15 +45,7 @@ async def train(file: UploadFile = File(...)):
 
 @app.post("/prediction")
 def predict():
-    result = subprocess.run(
-        ["python3", "src/models/predict_model.py"],
-        capture_output=True,
-        text=True
-    )
-
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {result.stderr}")
-
+    result = subprocess.run(["python3", "src/models/predict_model.py"], capture_output=True, text=True)
     return {
         "status": "Prediction completed",
         "stdout": result.stdout,
@@ -73,14 +66,22 @@ def health_check():
 @app.get("/recommendations")
 def get_recommendations(user_id: int, n: int = 5):
     try:
+        # Load the predictions CSV
         df = pd.read_csv("src/api/predictions_rf.csv")
+
+        # Filter recommendations for the user
         user_recs = df[df["userId"] == user_id]
 
         if user_recs.empty:
             raise HTTPException(status_code=404, detail="No recommendations found for this user")
 
+        # Sort by predicted rating descending
         user_recs = user_recs.sort_values(by="pred_rating", ascending=False)
+
+        # Return top N recommendations
         top_n = user_recs.head(n)
+
+        # Convert to list of movie IDs (or use movie titles if available)
         recommendations = top_n["movieId"].tolist()
 
         return {
