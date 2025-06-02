@@ -1,0 +1,101 @@
+import pandas as pd
+import numpy as np
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+from joblib import load
+
+# Load data for movie names and genres
+df_movies = pd.read_csv('src/data/movies.utf.csv', sep='::', engine='python',
+                        names=['MovieID', 'MovieName', 'Genre'])
+
+# Load ratings data
+file_path = 'src/data/movies_db.csv'  # Modify the file path if needed
+try:
+    movie_ratings = pd.read_csv(file_path, sep=',')
+except Exception as e:
+    print(f"Error loading CSV: {e}")
+    exit()
+
+# Prepare features and labels
+features = movie_ratings[['MovieID', 'Age', 'Occupation']].values
+labels = movie_ratings['Rating'].values
+
+# Split dataset for evaluation
+train, test, train_labels, test_labels = train_test_split(features, labels, test_size=0.3, random_state=42)
+
+# Load the trained Random Forest model
+try:
+    rf = load('src/models/random_forest_model.joblib')
+except Exception as e:
+    print(f"Failed to load model: {e}")
+    exit()
+
+# Predict on test set
+y_pred_rf = rf.predict(test)
+
+# Evaluate model
+acc_model2 = accuracy_score(test_labels, y_pred_rf)
+classification_rep = classification_report(test_labels, y_pred_rf)
+
+print('Accuracy score of Random Forest model:', acc_model2)
+print('Classification report of Random Forest model:\n', classification_rep)
+
+# Create DataFrame for model scores
+models = pd.DataFrame({
+    'Model': ['Random Forest Classifier'],
+    'Accuracy Score': [acc_model2]
+})
+print(models)
+
+# Example prediction for sample data (MovieID=123, Age=25, Occupation=3)
+sample_data = np.array([[123, 25, 3]])
+prediction = rf.predict(sample_data)
+print("Predicted Rating for sample data:", prediction[0])
+
+# Example user input for recommendations
+user_age = 30
+user_occupation = 5
+
+# All unique movies
+all_movies = movie_ratings['MovieID'].unique()
+
+# Movies rated by users of same age (approximate filter)
+rated_movies = movie_ratings[movie_ratings['Age'] == user_age]['MovieID'].unique()
+
+# Movies user hasn't rated
+unrated_movies = np.setdiff1d(all_movies, rated_movies)
+
+recommendations = []
+
+for movie in unrated_movies:
+    sample_data = np.array([[movie, user_age, user_occupation]])
+    predicted_rating = rf.predict(sample_data)[0]
+    recommendations.append((movie, predicted_rating))
+
+# Sort and take top 5
+recommendations.sort(key=lambda x: x[1], reverse=True)
+top_movies = recommendations[:5]
+
+print("Recommended Movies:")
+for movie, rating in top_movies:
+    print(f"Movie ID: {movie}, Predicted Rating: {rating}")
+
+# Create DataFrame of top recommendations
+top_movies_df = pd.DataFrame(top_movies, columns=['MovieID', 'Predicted Rating'])
+
+# Merge with movie titles
+top_movies_df = top_movies_df.merge(df_movies[['MovieID', 'MovieName']], on='MovieID', how='left')
+
+print(top_movies_df[['MovieName', 'Predicted Rating']])
+
+# Prepare DataFrame for API usage
+user_id = 1  # Static example user ID; you can make dynamic later
+top_movies_df['userId'] = user_id
+top_movies_df.rename(columns={'MovieID': 'movieId', 'Predicted Rating': 'pred_rating'}, inplace=True)
+
+# Reorder columns to expected format
+top_movies_df = top_movies_df[['userId', 'movieId', 'pred_rating']]
+
+# Save predictions CSV used by FastAPI /recommendations endpoint
+top_movies_df.to_csv('src/api/predictions_rf.csv', index=False)
+

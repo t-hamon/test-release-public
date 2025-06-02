@@ -70,26 +70,33 @@ def health_check():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
+
+
 @app.get("/recommendations")
-def get_recommendations(user_id: int, n: int = 5):
+def get_recommendations(user_id: int, n: int):
     try:
+        # Load predictions
         df = pd.read_csv("src/api/predictions_rf.csv")
-        user_recs = df[df["userId"] == user_id]
+        df.columns = [col.lower() for col in df.columns]
+
+        if "userid" not in df.columns or "movieid" not in df.columns or "pred_rating" not in df.columns:
+            raise ValueError("Required columns missing in predictions_rf.csv")
+
+        user_recs = df[df["userid"] == user_id]
 
         if user_recs.empty:
-            raise HTTPException(status_code=404, detail="No recommendations found for this user")
+            return {"message": f"No recommendations found for user {user_id}"}
 
-        user_recs = user_recs.sort_values(by="pred_rating", ascending=False)
-        top_n = user_recs.head(n)
-        recommendations = top_n["movieId"].tolist()
+        top_recs = user_recs.sort_values(by="pred_rating", ascending=False).head(n)
 
-        return {
-            "user_id": user_id,
-            "recommendations": recommendations
-        }
+        # Ensure moviename is included
+        if "moviename" not in top_recs.columns:
+            df_movies = pd.read_csv("src/data/movies.utf.csv", sep="::", engine="python",
+                                    names=["movieid", "moviename", "genre"])
+            df_movies.columns = [col.lower() for col in df_movies.columns]
+            top_recs = top_recs.merge(df_movies[["movieid", "moviename"]], on="movieid", how="left")
 
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="predictions_rf.csv not found. Please run /prediction first.")
+        return top_recs[["movieid", "moviename", "pred_rating"]].to_dict(orient="records")
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

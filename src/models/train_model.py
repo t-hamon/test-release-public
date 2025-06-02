@@ -16,6 +16,7 @@ from sklearn.preprocessing import StandardScaler
 # Set MLflow tracking URI and experiment name
 mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 mlflow.set_tracking_uri("http://172.17.0.1:5000")
+#mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment("MovieRecommendation")
 
 # Load CSV data file from first argument or fallback path

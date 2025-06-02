@@ -6,37 +6,34 @@ from sklearn.metrics import accuracy_score, classification_report
 
 # Load movies metadata
 df_movies = pd.read_csv('src/data/movies.utf.csv', sep='::', engine='python',
-                        names=['movieid', 'moviename', 'genre'])
-df_movies.columns = [col.lower() for col in df_movies.columns]
+                        names=['MovieID', 'MovieName', 'Genre'])
 
 print("🚀 Prediction script started")
-
 # Load ratings
 movie_ratings = pd.read_csv('src/data/movies_db.csv')
-movie_ratings.columns = [col.lower() for col in movie_ratings.columns]
 
 # Load the trained model
 rf = load('src/models/random_forest_model.joblib')
 
-# Evaluate model performance
-features = movie_ratings[['movieid', 'age', 'occupation']].values
-labels = movie_ratings['rating'].values
+# Evaluation (optional but useful for debugging)
+features = movie_ratings[['MovieID', 'Age', 'Occupation']].values
+labels = movie_ratings['Rating'].values
 X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.3, random_state=42)
 y_pred = rf.predict(X_test)
 print("Accuracy:", accuracy_score(y_test, y_pred))
 print("Report:\n", classification_report(y_test, y_pred))
 
-# Generate predictions for unrated movies
-all_user_ids = movie_ratings['userid'].unique()
-all_movie_ids = movie_ratings['movieid'].unique()
+# Generate predictions for all users
+all_user_ids = movie_ratings['UserID'].unique()
+all_movie_ids = movie_ratings['MovieID'].unique()
 
 predictions = []
 
 for user_id in all_user_ids:
-    user_data = movie_ratings[movie_ratings['userid'] == user_id].iloc[0]
-    user_age = user_data['age']
-    user_occupation = user_data['occupation']
-    user_rated = movie_ratings[movie_ratings['userid'] == user_id]['movieid'].unique()
+    user_data = movie_ratings[movie_ratings['UserID'] == user_id].iloc[0]
+    user_age = user_data['Age']
+    user_occupation = user_data['Occupation']
+    user_rated = movie_ratings[movie_ratings['UserID'] == user_id]['MovieID'].unique()
     user_unrated = np.setdiff1d(all_movie_ids, user_rated)
 
     for movie_id in user_unrated[:150]:
@@ -44,14 +41,12 @@ for user_id in all_user_ids:
         pred_rating = rf.predict(sample)[0]
         predictions.append((user_id, movie_id, pred_rating))
 
-# Create prediction DataFrame
-pred_df = pd.DataFrame(predictions, columns=['userid', 'movieid', 'pred_rating'])
+# Convert to DataFrame
+pred_df = pd.DataFrame(predictions, columns=['userId', 'movieId', 'pred_rating'])
 
 # Merge with movie names
-pred_df = pred_df.merge(df_movies[['movieid', 'moviename']], on='movieid', how='left')
-
-# Normalize column names
-pred_df.columns = [col.lower() for col in pred_df.columns]
+pred_df = pred_df.merge(df_movies[['MovieID', 'MovieName']], left_on='movieId', right_on='MovieID', how='left')
+pred_df.drop(columns=['MovieID'], inplace=True)
 
 print("✅ Writing predictions to CSV")
 

@@ -1,29 +1,41 @@
-from fastapi import FastAPI
-from .db import get_db_connection
+from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 import subprocess
-
-# Nettoyage CSV
-print("Nettoyage du CSV")
-subprocess.run(["python3", "src/models/csv2db_prep.py"], check=True)
-
-# Insertion dans Postgres
-print("Insertion dans PostgreSQL")
-subprocess.run([
-    "psql", "host=postgres user=postgres password=root dbname=movies_db",
-    "-c",
-    "\\copy movies(MovieName, MovieID, Genre, UserID, Rating, Timestamp, Gender, Age, Occupation, Zipcode, age_group) FROM 'src/data/movies_cleaned.csv' DELIMITER ',' CSV HEADER;"
-])
-print("Données insérées !")
+import psycopg2
+import pandas as pd
+import shutil
+import os
 
 app = FastAPI()
+
+def get_db_connection():
+    return psycopg2.connect(
+        host="my-postgres",
+        database="movies_db",
+        user="postgres",
+        password="password"
+    )
 
 @app.get("/")
 def root():
     return {"message": "API de recommandation de films!"}
 
 @app.post("/training")
-def train():
-    result = subprocess.run(["python3", "src/models/train_model.py"], capture_output=True, text=True)
+async def train(file: UploadFile = File(...)):
+    upload_path = f"uploaded_{file.filename}"
+    with open(upload_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    result = subprocess.run(
+        ["python3", "src/models/train_model.py", upload_path],
+        capture_output=True,
+        text=True
+    )
+
+    os.remove(upload_path)
+
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"Training failed: {result.stderr}")
+
     return {
         "status": "Training completed",
         "stdout": result.stdout,
@@ -32,7 +44,15 @@ def train():
 
 @app.post("/prediction")
 def predict():
-    result = subprocess.run(["python3", "src/models/predict_model.py"], capture_output=True, text=True)
+    result = subprocess.run(
+        ["python3", "src/models/predict_model.py"],
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {result.stderr}")
+
     return {
         "status": "Prediction completed",
         "stdout": result.stdout,
@@ -40,14 +60,36 @@ def predict():
     }
 
 @app.get("/health")
-def health():
+def health_check():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM movies")
-        count = cur.fetchone()
-        cur.close()
+        cur.execute("SELECT 1")
         conn.close()
-        return {"status": "ok", "movie_count": count["count"]}
+        return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+
+@app.get("/recommendations")
+def get_recommendations(user_id: int, n: int = 5):
+    try:
+        df = pd.read_csv("src/api/predictions_rf.csv")
+        user_recs = df[df["userId"] == user_id]
+
+        if user_recs.empty:
+            raise HTTPException(status_code=404, detail="No recommendations found for this user")
+
+        user_recs = user_recs.sort_values(by="pred_rating", ascending=False)
+        top_n = user_recs.head(n)
+        recommendations = top_n["movieId"].tolist()
+
+        return {
+            "user_id": user_id,
+            "recommendations": recommendations
+        }
+
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="predictions_rf.csv not found. Please run /prediction first.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
