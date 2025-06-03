@@ -10,9 +10,7 @@ on:
 jobs:
   release:
     name: Create release and build
-    runs-on: ubuntu-22.04
-    env:
-      ACTIONS_STEP_DEBUG: true
+    runs-on: ubuntu-latest
 
     permissions:
       contents: write
@@ -44,16 +42,3 @@ jobs:
         cp -r src Dockerfile requirements.txt release/
         cp RELEASE.md release/
 
-    - name: Preload upload-artifact action
-      uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5
-      with:
-        name: dummy
-        path: dummy
-        if-no-files-found: ignore
-
-
-    - name: Upload release artifact
-      uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5
-      with:
-        name: release-package
-        path: release/
