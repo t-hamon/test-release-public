@@ -5,6 +5,7 @@ import numpy as np
 import mlflow
 import mlflow.sklearn
 import joblib  # <-- Add joblib import
+import argparse
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -13,14 +14,25 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
+parser = argparse.ArgumentParser(description="Train model with custom hyperparameters")
+parser.add_argument("--rf_n_estimators", type=int, default=100)
+parser.add_argument("--rf_max_depth", type=int, default=10)
+parser.add_argument("--rf_min_samples_split", type=int, default=5)
+parser.add_argument("--rf_min_samples_leaf", type=int, default=5)
+parser.add_argument("--test_size", type=float, default=0.3)
+parser.add_argument("--random_state", type=int, default=42)
+parser.add_argument("--input_csv", type=str, default="data/movies_cleaned.csv")
+
+args = parser.parse_args()
+
 # Set MLflow tracking URI and experiment name
 mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-mlflow.set_tracking_uri("http://172.17.0.1:5000")
+mlflow.set_tracking_uri(mlflow_tracking_uri)
 #mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment("MovieRecommendation")
 
 # Load CSV data file from first argument or fallback path
-file_path = sys.argv[1] if len(sys.argv) > 1 else '../data/movies_db.csv'
+file_path = args.input_csv
 
 if not os.path.exists(file_path):
     print(f"CSV file not found: {file_path}")
@@ -49,14 +61,15 @@ test_scaled = scaler.transform(test)
 with mlflow.start_run(run_name="movie-rating-model-training"):
     # Log parameters
     mlflow.log_params({
-        "test_size": 0.3,
-        "random_state": 42,
-        "rf_n_estimators": 100,
-        "rf_max_depth": 10,
-        "rf_min_samples_split": 5,
-        "rf_min_samples_leaf": 5
+        "test_size": args.test_size,
+        "random_state": args.random_state,
+        "rf_n_estimators": args.rf_n_estimators,
+        "rf_max_depth": args.rf_max_depth,
+        "rf_min_samples_split": args.rf_min_samples_split,
+        "rf_min_samples_leaf": args.rf_min_samples_leaf,
+        "input_csv": os.path.basename(file_path)
     })
-    mlflow.log_param("input_csv", os.path.basename(file_path))
+
 
     # Logistic Regression
     lr = LogisticRegression(max_iter=1000)
@@ -67,11 +80,13 @@ with mlflow.start_run(run_name="movie-rating-model-training"):
 
     # Random Forest
     rf = RandomForestClassifier(
-        n_estimators=100, max_depth=10,
-        min_samples_split=5, min_samples_leaf=5,
-        random_state=42
+        n_estimators=args.rf_n_estimators,
+        max_depth=args.rf_max_depth,
+        min_samples_split=args.rf_min_samples_split,
+        min_samples_leaf=args.rf_min_samples_leaf,
+        random_state=args.random_state
     )
-    rf.fit(train, train_labels)  # Random Forest with original (non-scaled) features
+    rf.fit(train, train_labels)
     y_pred_rf = rf.predict(test)
     acc_model2 = accuracy_score(test_labels, y_pred_rf)
     classification_report_rf = classification_report(test_labels, y_pred_rf)
@@ -101,20 +116,15 @@ with mlflow.start_run(run_name="movie-rating-model-training"):
         "cv_knn_mean": cv_knn.mean()
     })
 
-    # Save classification report artifact for Random Forest
+    # Log artifacts
     with open("classification_report_rf.txt", "w") as f:
         f.write(classification_report_rf)
     mlflow.log_artifact("classification_report_rf.txt")
 
-    # Log Random Forest model (MLflow tracking)
-    print("Logging Random Forest model to MLflow...")
-    mlflow.sklearn.log_model(rf, "random_forest_model")
-    print("Model logged successfully!")
-
-    # Save and log predictions artifact
     predictions_df = pd.DataFrame(y_pred_rf, columns=['Predicted_Rating'])
     predictions_df.to_csv('predictions_rf.csv', index=False)
     mlflow.log_artifact('predictions_rf.csv')
 
+    mlflow.sklearn.log_model(rf, "random_forest_model")
+    print("Model logged successfully!")
     print("Random Forest Accuracy on Test Data:", acc_model2)
-

@@ -1,0 +1,6 @@
+artifact_location: /app/mlflow_tracking_uri/471764497685436289
+creation_time: 1748977498133
+experiment_id: '471764497685436289'
+last_update_time: 1748977498133
+lifecycle_stage: active
+name: MovieRecommendation

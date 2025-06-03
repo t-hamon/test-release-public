@@ -1,0 +1,15 @@
+artifact_uri: /app/mlflow_tracking_uri/471764497685436289/4828bd07c39d4ce7b327ab3bfe9e6a19/artifacts
+end_time: 1748978397315
+entry_point_name: ''
+experiment_id: '471764497685436289'
+lifecycle_stage: active
+run_id: 4828bd07c39d4ce7b327ab3bfe9e6a19
+run_name: movie-rating-model-training
+run_uuid: 4828bd07c39d4ce7b327ab3bfe9e6a19
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748978397302
+status: 4
+tags: []
+user_id: root
