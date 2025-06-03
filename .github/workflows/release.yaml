@@ -5,13 +5,12 @@ on:
     branches:
       - test-release
 
-env:
-  ACTIONS_STEP_DEBUG: true
-
 jobs:
   release:
     name: Create release and build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    env:
+      ACTIONS_STEP_DEBUG: true
 
     permissions:
       contents: write
