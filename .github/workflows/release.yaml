@@ -5,6 +5,9 @@ on:
     branches:
       - test-release
 
+env:
+  ACTIONS_STEP_DEBUG: true
+
 jobs:
   release:
     name: Create release and build
@@ -41,7 +44,7 @@ jobs:
         cp RELEASE.md release/
 
     - name: Preload upload-artifact action
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3.1.2
       with:
         name: dummy
         path: dummy
@@ -49,7 +52,7 @@ jobs:
 
 
     - name: Upload release artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3.1.2
       with:
         name: release-package
         path: release/
