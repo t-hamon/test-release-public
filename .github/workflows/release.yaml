@@ -40,6 +40,14 @@ jobs:
         cp -r src Dockerfile requirements.txt release/
         cp RELEASE.md release/
 
+    - name: Preload upload-artifact action
+      uses: actions/upload-artifact@v3.1.3
+      with:
+        name: dummy
+        path: dummy
+        if-no-files-found: ignore
+
+
     - name: Upload release artifact
       uses: actions/upload-artifact@v3.1.3
       with:
