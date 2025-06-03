@@ -41,7 +41,7 @@ jobs:
         cp RELEASE.md release/
 
     - name: Upload release artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3.1.3
       with:
         name: release-package
         path: release/
