@@ -6,7 +6,9 @@ import mlflow
 import mlflow.sklearn
 import joblib  # <-- Add joblib import
 import argparse
+import psycopg2
 
+from datetime import datetime
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
@@ -24,6 +26,31 @@ parser.add_argument("--random_state", type=int, default=42)
 parser.add_argument("--input_csv", type=str, default="data/movies_cleaned.csv")
 
 args = parser.parse_args()
+
+
+# Connexion PostgreSQL
+def log_metrics_to_db(model_name, accuracy, cv_mean):
+    try:
+        conn = psycopg2.connect(
+            host="my-postgres",
+            database="movies_db",
+            user="postgres",
+            password="password"
+        )
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO model_metrics (model_name, accuracy, cv_mean)
+            VALUES (%s, %s, %s)
+            """,
+            (model_name, accuracy, cv_mean)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"[DB] Enregistré: {model_name} (acc={accuracy:.4f}, cv={cv_mean:.4f})")
+    except Exception as e:
+        print(f"[DB ERROR] {e}")
 
 # Set MLflow tracking URI and experiment name
 mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -44,13 +71,15 @@ except Exception as e:
     print(f"Error loading CSV: {e}")
     sys.exit(1)
 
+
+
 # Prepare features and labels
 features = movie_ratings[['MovieID', 'Age', 'Occupation']].values
 labels = movie_ratings['Rating'].values
 
 # Split into train and test sets
 train, test, train_labels, test_labels = train_test_split(
-    features, labels, test_size=0.3, random_state=42
+    features, labels, test_size=args.test_size, random_state=args.random_state
 )
 
 # Standardize features for applicable models
@@ -75,8 +104,13 @@ with mlflow.start_run(run_name="movie-rating-model-training"):
     lr = LogisticRegression(max_iter=1000)
     lr.fit(train_scaled, train_labels)
     y_predict_lr = lr.predict(test_scaled)
-    acc_model1 = accuracy_score(test_labels, y_predict_lr)
-    classification_report_lr = classification_report(test_labels, y_predict_lr)
+    acc_lr = accuracy_score(test_labels, y_predict_lr)
+    report_lr = classification_report(test_labels, y_predict_lr)
+    cv_lr = cross_val_score(lr, train_scaled, train_labels, cv=5)
+
+    mlflow.log_metric("lr_accuracy", acc_lr)
+    mlflow.log_metric("cv_lr_mean", cv_lr.mean())
+    log_metrics_to_db("LogisticRegression", acc_lr, cv_lr.mean())
 
     # Random Forest
     rf = RandomForestClassifier(
@@ -88,43 +122,39 @@ with mlflow.start_run(run_name="movie-rating-model-training"):
     )
     rf.fit(train, train_labels)
     y_pred_rf = rf.predict(test)
-    acc_model2 = accuracy_score(test_labels, y_pred_rf)
-    classification_report_rf = classification_report(test_labels, y_pred_rf)
+    acc_rf = accuracy_score(test_labels, y_pred_rf)
+    report_rf = classification_report(test_labels, y_pred_rf)
+    cv_rf = cross_val_score(rf, features, labels, cv=5)
 
     # Save the model locally as joblib file (important for predict_model.py)
     joblib_path = "src/models/random_forest_model.joblib"
     joblib.dump(rf, joblib_path)
     print(f"Random Forest model saved locally at: {joblib_path}")
 
-    # K-Nearest Neighbors
-    knn = KNeighborsClassifier()
-    knn.fit(train_scaled, train_labels)
-    y_pred_knn = knn.predict(test_scaled)
-    acc_model3 = accuracy_score(test_labels, y_pred_knn)
-    classification_report_knn = classification_report(test_labels, y_pred_knn)
+    mlflow.log_metric("rf_accuracy", acc_rf)
+    mlflow.log_metric("cv_rf_mean", cv_rf.mean())
+    mlflow.sklearn.log_model(rf, "random_forest_model")
+    log_metrics_to_db("RandomForest", acc_rf, cv_rf.mean())
 
-    # Cross-validation scores
-    cv_rf = cross_val_score(rf, features, labels, cv=5)
-    cv_knn = cross_val_score(knn, features, labels, cv=5)
-
-    # Log metrics
-    mlflow.log_metrics({
-        "lr_accuracy": acc_model1,
-        "rf_accuracy": acc_model2,
-        "knn_accuracy": acc_model3,
-        "cv_rf_mean": cv_rf.mean(),
-        "cv_knn_mean": cv_knn.mean()
-    })
-
-    # Log artifacts
     with open("classification_report_rf.txt", "w") as f:
-        f.write(classification_report_rf)
+        f.write(report_rf)
     mlflow.log_artifact("classification_report_rf.txt")
 
     predictions_df = pd.DataFrame(y_pred_rf, columns=['Predicted_Rating'])
     predictions_df.to_csv('predictions_rf.csv', index=False)
     mlflow.log_artifact('predictions_rf.csv')
 
-    mlflow.sklearn.log_model(rf, "random_forest_model")
-    print("Model logged successfully!")
-    print("Random Forest Accuracy on Test Data:", acc_model2)
+    # K-Nearest Neighbors
+    knn = KNeighborsClassifier()
+    knn.fit(train_scaled, train_labels)
+    y_pred_knn = knn.predict(test_scaled)
+    acc_knn = accuracy_score(test_labels, y_pred_knn)
+    report_knn = classification_report(test_labels, y_pred_knn)
+    cv_knn = cross_val_score(knn, train_scaled, train_labels, cv=5)
+
+    # Log metrics
+    mlflow.log_metric("knn_accuracy", acc_knn)
+    mlflow.log_metric("cv_knn_mean", cv_knn.mean())
+    log_metrics_to_db("KNN", acc_knn, cv_knn.mean())
+
+    print("Training terminé et résultats loggés.")
