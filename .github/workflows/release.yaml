@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - test-release
+    tags:
+      - 'v*'
 
 jobs:
   release:
@@ -43,7 +45,7 @@ jobs:
         cp RELEASE.md release/
 
     - name: Preload upload-artifact action
-      uses: actions/upload-artifact@v3.1.2
+      uses: actions/upload-artifact@v3
       with:
         name: dummy
         path: dummy
@@ -51,7 +53,7 @@ jobs:
 
 
     - name: Upload release artifact
-      uses: actions/upload-artifact@v3.1.2
+      uses: actions/upload-artifact@v3
       with:
         name: release-package
         path: release/
