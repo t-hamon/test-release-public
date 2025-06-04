@@ -103,10 +103,9 @@
     },
     {
       "datasource": {
-        "type": "grafana-postgresql-datasource",
         "uid": "fenvv2c5xp98ga"
       },
-      "description": "Reco Films",
+      "description": "Plusieurs runs sont lancés, avec différents hyperparamètres générés automatiquement (argparse)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -116,24 +115,125 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Accuracy",
             "axisPlacement": "auto",
-            "fillOpacity": 80,
+            "barAlignment": 0,
+            "barWidthFactor": 0.4,
+            "drawStyle": "points",
+            "fillOpacity": 53,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
             "lineWidth": 1,
+            "pointSize": 7,
             "scaleDistribution": {
               "type": "linear"
+            },
+            "showPoints": "always",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
             }
           },
-          "fieldMinMax": true,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\r\n  timestamp AS \"time\",\r\n  CASE\r\n    WHEN model_name = 'RandomForest' THEN CONCAT('RF (d=', rf_max_depth, ', n=', rf_n_estimators, ') @ ', timestamp)\r\n    WHEN model_name = 'LogisticRegression' THEN CONCAT('LR (C=', lr_c, ') @ ', timestamp)\r\n    WHEN model_name = 'KNN' THEN CONCAT('KNN (k=', knn_n_neighbors, ') @ ', timestamp)\r\n    ELSE CONCAT(model_name, ' @ ', timestamp)\r\n  END AS metric_label,\r\n  accuracy AS value\r\nFROM model_metrics\r\nORDER BY time ASC\r\n",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "alias": "\"time\"",
+                "name": "$__time",
+                "parameters": [
+                  {
+                    "name": "accuracy",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              },
+              {
+                "alias": "\"time\"",
+                "name": "$__time",
+                "parameters": [
+                  {
+                    "name": "cv_mean",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              }
+            ],
+            "groupBy": [],
+            "limit": 50
+          },
+          "table": "model_metrics"
+        }
+      ],
+      "title": "Accuracy (y) en fonction des hyperparamètres",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fenvv2c5xp98ga"
+      },
+      "description": "Reco Films",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -158,26 +258,28 @@
       },
       "id": 1,
       "options": {
-        "barRadius": 0,
-        "barWidth": 0.97,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
+        "displayMode": "lcd",
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
       },
       "pluginVersion": "12.0.1",
       "targets": [
@@ -230,8 +332,8 @@
           "table": "model_metrics"
         }
       ],
-      "title": "Accuracy des modèles ML",
-      "type": "barchart"
+      "title": "Accuracy max des modèles ML",
+      "type": "bargauge"
     }
   ],
   "preload": false,
@@ -241,12 +343,12 @@
     "list": []
   },
   "time": {
-    "from": "now-30d",
-    "to": "now"
+    "from": "2025-06-04T18:08:59.752Z",
+    "to": "2025-06-04T18:14:54.888Z"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Reco_Films",
   "uid": "05c802d1-1a2d-4d01-a719-0d2bab604b4d",
-  "version": 1
+  "version": 5
 }

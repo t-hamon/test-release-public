@@ -1,4 +1,4 @@
-userId,movieId,pred_rating,MovieName
+userid,movieid,pred_rating,moviename
 216,1,2,Toy Story (1995)
 216,2,2,Jumanji (1995)
 216,3,2,Grumpier Old Men (1995)

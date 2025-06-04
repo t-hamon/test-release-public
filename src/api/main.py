@@ -2,10 +2,22 @@ from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 import subprocess
 import psycopg2
 import pandas as pd
+from pydantic import BaseModel
+from typing import List
 import shutil
 import os
 
 app = FastAPI()
+
+class Recommendation(BaseModel):
+    movie_id: int
+    title: str
+    score: float
+
+class RecommendationResponse(BaseModel):
+    user_id: int
+    recommendations: List[Recommendation]
+
 
 def get_db_connection():
     return psycopg2.connect(
@@ -72,7 +84,7 @@ def health_check():
 
 
 
-@app.get("/recommendations")
+@app.get("/recommendations", response_model=RecommendationResponse)
 def get_recommendations(user_id: int, n: int):
     try:
         # Load predictions
@@ -85,18 +97,33 @@ def get_recommendations(user_id: int, n: int):
         user_recs = df[df["userid"] == user_id]
 
         if user_recs.empty:
-            return {"message": f"No recommendations found for user {user_id}"}
+            return {"user_id": user_id, "recommendations": []}
 
         top_recs = user_recs.sort_values(by="pred_rating", ascending=False).head(n)
 
-        # Ensure moviename is included
+        # Merge movie titles
         if "moviename" not in top_recs.columns:
             df_movies = pd.read_csv("src/data/movies.utf.csv", sep="::", engine="python",
                                     names=["movieid", "moviename", "genre"])
             df_movies.columns = [col.lower() for col in df_movies.columns]
             top_recs = top_recs.merge(df_movies[["movieid", "moviename"]], on="movieid", how="left")
 
-        return top_recs[["movieid", "moviename", "pred_rating"]].to_dict(orient="records")
+        recommendations = [
+            {
+                "movie_id": int(row["movieid"]),
+                "title": row["moviename"],
+                "score": round(row["pred_rating"], 2)
+            }
+            for _, row in top_recs.iterrows()
+        ]
+
+        return {
+            "user_id": user_id,
+            "recommendations": top_recs[["movieid", "moviename", "pred_rating"]]
+                .rename(columns={"movieid": "movieid", "moviename": "title", "pred_rating": "score"})
+                .to_dict(orient="records")
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
